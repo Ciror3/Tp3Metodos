@@ -83,7 +83,7 @@ for d in d_values:
     # Calcular la matriz de similaridad utilizando la distancia coseno 
     similarity_matrix = 1 - cosine_distances(reconstructed_images)
     similarities.append(similarity_matrix)# Crear una lista de valores d para la compresión
-d_values = [10, 20, 30, 40, 50]  # Puedes ajustar esto
+d_values = [5,10,15,20,25]  # Puedes ajustar esto
 
 # Lista para almacenar las matrices de similaridad
 similarities = []
@@ -102,7 +102,8 @@ for d in d_values:
     similarities.append(similarity_matrix)
 
 # Crear el mapa de calor
-labels = [str(i) for i in range(similarity_matrix.shape[0])]
+x_labels = [f'{i}' for i in range(similarity_matrix.shape[0])]
+y_labels = [f'{i}' for i in range(similarity_matrix.shape[1])]
 
 plt.figure(figsize=(8, 8))
 plt.imshow(similarity_matrix, cmap='viridis', interpolation='none')
@@ -112,11 +113,56 @@ plt.xticks(np.arange(similarity_matrix.shape[0]))
 plt.yticks(np.arange(similarity_matrix.shape[1]))
 
 # Configurar los valores de las etiquetas de los ejes (opcional)
-plt.xticks(np.arange(similarity_matrix.shape[0]), 'x', rotation=90)
-plt.yticks(np.arange(similarity_matrix.shape[1]), 'y')
+plt.xticks(np.arange(similarity_matrix.shape[0]), x_labels, rotation=90)
+plt.yticks(np.arange(similarity_matrix.shape[1]), y_labels)
 
 # Mostrar una barra de color para la escala (opcional)
 plt.colorbar()
 
 # Mostrar el mapa de calor
+plt.show()
+
+#Parte 4
+
+
+# Realizar la descomposición SVD de la imagen de referencia
+U, S, VT = svd(data_matrix, full_matrices=False)
+
+# Definir un valor de error máximo (10%)
+max_error = 0.1
+
+# Inicializar listas para almacenar valores de d y errores
+d_values = []
+errors = []
+
+# Inicializar d y el error
+d = 1
+error = 1.0
+
+# Encontrar el valor mínimo de d
+while error > max_error:
+    # Reconstruir la imagen de referencia con d dimensiones
+    U_d = U[:, :d]
+    S_d = np.diag(S[:d])
+    VT_d = VT[:d, :]
+    reconstructed_image = np.dot(U_d, np.dot(S_d, VT_d))
+
+    # Calcular el error entre la imagen original y la reconstruida
+    error = np.linalg.norm(data_matrix - reconstructed_image, 'fro') / np.linalg.norm(data_matrix, 'fro')
+
+    # Almacenar los valores de d y el error
+    d_values.append(d)
+    errors.append(error)
+
+    # Incrementar d
+    d += 1
+
+plt.figure(figsize=(8, 6))
+plt.plot(d_values, errors, marker='o')
+plt.xlabel('Número de Dimensiones (d)')
+plt.ylabel('Error (Norma de Frobenius)')
+plt.title('Error de Compresión vs. Número de Dimensiones')
+plt.grid(True)
+
+# Mostrar el gráfico
 plt.show()
