@@ -1,103 +1,122 @@
 import numpy as np
-from scipy.linalg import svd
 import matplotlib.pyplot as plt
-from sklearn.metrics import pairwise_distances
+from scipy.linalg import svd
+from PIL import Image
+import os
+from sklearn.metrics.pairwise import cosine_distances
+from numpy.linalg import norm
 
-import zipfile
+# Directorio que contiene las imágenes descomprimidas
+image_directory = 'dataset_imagenes'
 
-with zipfile.ZipFile('dataset_imagenes.zip', 'r') as zip_ref:
-    zip_ref.extractall('dataset_imagenes')
+# Obtener la lista de nombres de archivos de imágenes en el directorio
+image_files = os.listdir(image_directory)
 
-# Cargar imágenes en una matriz de datos
-image_paths = ['dataset_imagenes/image1.jpg', 'dataset_imagenes/image2.jpg', ...]  # Lista de rutas de imágenes
-n = len(image_paths)  # Número de imágenes
-p = 64  # Tamaño de las imágenes (p × p)
+# Lista para almacenar las imágenes
+image_list = []
+
+# Cargar las imágenes y convertirlas en arreglos NumPy
+for image_file in image_files:
+    image_path = os.path.join(image_directory, image_file)
+    image = Image.open(image_path)  # Abrir la imagen con Pillow
+    image = image.convert('L')  # Convertir a escala de grises
+    image_array = np.array(image)  # Convertir a un arreglo NumPy
+    image_list.append(image_array)
 
 # Crear una matriz de datos para almacenar las imágenes
+n = len(image_list)  # Número de imágenes
+p = image_array.shape[0]  # Tamaño de las imágenes (p × p)
+
 data_matrix = np.zeros((n, p * p))
 
-# Cargar y convertir las imágenes en vectores
-for i, image_path in enumerate(image_paths):
-    image = plt.imread(image_path)
-    data_matrix[i] = image.ravel()
+# Convertir y apilar las imágenes en la matriz de datos
+for i in range(n):
+    image = image_list[i].reshape(p * p)
+    data_matrix[i, :] = image
 
 # Realizar la descomposición SVD
 U, S, VT = svd(data_matrix, full_matrices=False)
 
-# Número de dimensiones a utilizar (por ejemplo, 10 y 50)
-d1 = 10
-d2 = 50
+# Definir un valor de d para la compresión
+d1 = 10  # Por ejemplo, utiliza las primeras 10 dimensiones
+d2 = 20  # Por ejemplo, utiliza las primeras 100 dimensiones
 
 # Reconstruir imágenes con las primeras y últimas dimensiones
-reconstructed_images1 = np.dot(U[:, :d1], np.dot(np.diag(S[:d1]), VT[:d1, :]))
-reconstructed_images2 = np.dot(U[:, :d2], np.dot(np.diag(S[:d2]), VT[:d2, :]))
+reconstructed_images_d1 = np.dot(U[:, :d1], np.dot(np.diag(S[:d1]), VT[:d1, :]))
+reconstructed_images_d2 = np.dot(U[:, :d2], np.dot(np.diag(S[:d2]), VT[:d2, :]))
 
-# Visualizar imágenes reconstruidas
-plt.figure(figsize=(12, 6))
-for i in range(5):  # Mostrar las primeras 5 imágenes
-    plt.subplot(5, 3, 3 * i + 1)
-    plt.imshow(data_matrix[i].reshape(p, p), cmap='gray')
-    plt.title('Original')
-    plt.axis('off')
+# Visualizar imágenes originales y reconstruidas
+num_images_to_display = 15  # Número de imágenes a mostrar
+fig, axes = plt.subplots(nrows=3, ncols=num_images_to_display, figsize=(12, 6))
 
-    plt.subplot(5, 3, 3 * i + 2)
-    plt.imshow(reconstructed_images1[i].reshape(p, p), cmap='gray')
-    plt.title(f'Reconstruida (d={d1})')
-    plt.axis('off')
+for i in range(num_images_to_display):
+    axes[0, i].imshow(data_matrix[i].reshape(p, p), cmap='gray')
+    axes[0, i].axis('off')
+    axes[0, i].set_title('Original')
 
-    plt.subplot(5, 3, 3 * i + 3)
-    plt.imshow(reconstructed_images2[i].reshape(p, p), cmap='gray')
-    plt.title(f'Reconstruida (d={d2})')
-    plt.axis('off')
+    axes[1, i].imshow(reconstructed_images_d1[i].reshape(p, p), cmap='gray')
+    axes[1, i].axis('off')
+    axes[1, i].set_title(f'd={d1}')
+
+    axes[2, i].imshow(reconstructed_images_d2[i].reshape(p, p), cmap='gray')
+    axes[2, i].axis('off')
+    axes[2, i].set_title(f'd={d2}')
 
 plt.tight_layout()
 plt.show()
 
-# Calcular la matriz de similaridad para diferentes valores de d
+# Crear una lista de valores d para la compresión
 d_values = [10, 20, 30, 40, 50]  # Puedes ajustar esto
+
+# Lista para almacenar las matrices de similaridad
 similarities = []
 
 for d in d_values:
+    # Realizar la descomposición SVD con d dimensiones
     U_d = U[:, :d]
     S_d = np.diag(S[:d])
     VT_d = VT[:d, :]
-    reconstructed_images_d = np.dot(U_d, np.dot(S_d, VT_d))
 
-    # Calcular la matriz de similaridad (puedes usar otras métricas)
-    similarity_matrix = 1 - pairwise_distances(reconstructed_images_d, metric='cosine')
+    # Reconstruir imágenes con d dimensiones
+    reconstructed_images = np.dot(U_d, np.dot(S_d, VT_d))
+
+    # Calcular la matriz de similaridad utilizando la distancia coseno
+    similarity_matrix = 1 - cosine_distances(reconstructed_images)
+    similarities.append(similarity_matrix)# Crear una lista de valores d para la compresión
+d_values = [10, 20, 30, 40, 50]  # Puedes ajustar esto
+
+# Lista para almacenar las matrices de similaridad
+similarities = []
+
+for d in d_values:
+    # Realizar la descomposición SVD con d dimensiones
+    U_d = U[:, :d]
+    S_d = np.diag(S[:d])
+    VT_d = VT[:d, :]
+
+    # Reconstruir imágenes con d dimensiones
+    reconstructed_images = np.dot(U_d, np.dot(S_d, VT_d))
+
+    # Calcular la matriz de similaridad utilizando la distancia coseno
+    similarity_matrix = 1 - cosine_distances(reconstructed_images)
     similarities.append(similarity_matrix)
 
-# Visualizar las matrices de similaridad para diferentes valores de d (opcional)
-for i, d in enumerate(d_values):
-    plt.figure()
-    plt.imshow(similarities[i], cmap='viridis')
-    plt.title(f'Similaridad (d={d})')
-    plt.colorbar()
-    plt.show()
+# Crear el mapa de calor
+labels = [str(i) for i in range(similarity_matrix.shape[0])]
 
-# Definir la imagen de referencia (por ejemplo, la primera imagen)
-reference_image = data_matrix[0]
+plt.figure(figsize=(8, 8))
+plt.imshow(similarity_matrix, cmap='viridis', interpolation='none')
 
-# Definir el umbral de error
-error_threshold = 0.10  # 10%
+# Configurar etiquetas de los ejes (opcional)
+plt.xticks(np.arange(similarity_matrix.shape[0]))
+plt.yticks(np.arange(similarity_matrix.shape[1]))
 
-# Inicializar d
-d_min = 1
+# Configurar los valores de las etiquetas de los ejes (opcional)
+plt.xticks(np.arange(similarity_matrix.shape[0]), 'x', rotation=90)
+plt.yticks(np.arange(similarity_matrix.shape[1]), 'y')
 
-# Iterar para encontrar d mínimo
-for d in range(1, min(data_matrix.shape) + 1):
-    U_d = U[:, :d]
-    S_d = np.diag(S[:d])
-    VT_d = VT[:d, :]
-    reconstructed_image = np.dot(U_d, np.dot(S_d, VT_d))
+# Mostrar una barra de color para la escala (opcional)
+plt.colorbar()
 
-    # Calcular el error entre la imagen comprimida y la original
-    reconstruction_error = np.linalg.norm(reference_image - reconstructed_image, 'fro') / np.linalg.norm(reference_image, 'fro')
-
-    if reconstruction_error <= error_threshold:
-        d_min = d
-    else:
-        break
-
-# Comprimir todas las imágenes con d_min
-compressed_images = np.dot(U[:, :d_min], np.dot(np.diag(S[:d_min]), VT[:d_min, :]))
+# Mostrar el mapa de calor
+plt.show()
