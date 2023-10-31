@@ -80,7 +80,7 @@ for d in d_values:
     # Reconstruir imágenes con d dimensiones
     reconstructed_images = np.dot(U_d, np.dot(S_d, VT_d))
 
-    # Calcular la matriz de similaridad utilizando la distancia coseno
+    # Calcular la matriz de similaridad utilizando la distancia coseno 
     similarity_matrix = 1 - cosine_distances(reconstructed_images)
     similarities.append(similarity_matrix)# Crear una lista de valores d para la compresión
 d_values = [10, 20, 30, 40, 50]  # Puedes ajustar esto
