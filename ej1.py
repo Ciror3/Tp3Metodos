@@ -4,7 +4,6 @@ from scipy.linalg import svd
 from PIL import Image
 import os
 from sklearn.metrics.pairwise import cosine_distances
-from sklearn.metrics import pairwise_distances
 
 def load_images(image_directory):
     image_files = os.listdir(image_directory)
@@ -73,27 +72,24 @@ def calculate_cosine_similarity_matrices(U, S, VT, d_values):
         similarities.append(similarity_matrix)
     return similarities
 
-def calculate_euclidean_similarity_matrices(U, S, VT, d_values):
+def calculate_matrix_norm_similarity(U, S, VT, d_values, image_list):
     similarities = []
     for d in d_values:
         U_d = U[:, :d]
         S_d = np.diag(S[:d])
         VT_d = VT[:d, :]
+        
         reconstructed_images = np.dot(U_d, np.dot(S_d, VT_d))
-        similarity_matrix = 1 / (1 + pairwise_distances(reconstructed_images, metric='euclidean'))
-        similarities.append(similarity_matrix)
+        
+        # Calcula la norma de Frobenius de la diferencia entre cada par de imágenes reconstruidas en el conjunto
+        similarity_matrix = np.zeros((len(image_list), len(image_list)))
+        for i in range(len(image_list)):
+            for j in range(len(image_list)):
+                diff = reconstructed_images[i] - reconstructed_images[j]
+                similarity_matrix[i, j] = np.linalg.norm(diff)
+        
+        similarities.append(similarity_matrix)  # Conserva la matriz de similitud para este valor de d
     return similarities
-
-def create_similarity_heatmap(similarity_matrix):
-    x_labels = [f'{i}' for i in range(similarity_matrix.shape[0])]
-    y_labels = [f'{i}' for i in range(similarity_matrix.shape[1])]
-
-    plt.figure(figsize=(8, 8))
-    plt.imshow(similarity_matrix, cmap='viridis', interpolation='none')
-    plt.xticks(np.arange(similarity_matrix.shape[0]), x_labels, rotation=90)
-    plt.yticks(np.arange(similarity_matrix.shape[1]), y_labels)
-    plt.colorbar()
-    plt.show()
 
 def find_minimal_d_with_error(data_matrix, max_error):
     U, S, VT = svd(data_matrix, full_matrices=False)
@@ -111,7 +107,26 @@ def find_minimal_d_with_error(data_matrix, max_error):
         d_values.append(d)
         errors.append(error)
         d += 1
+    
+
     return d_values, errors
+
+    U, S, VT = svd(data_matrix, full_matrices=False)
+    U_d = U[:, :d]
+    S_d = np.diag(S[:d])
+    VT_d = VT[:d, :]
+    reconstructed_image = np.dot(U_d, np.dot(S_d, VT_d))
+    error = np.linalg.norm(data_matrix - reconstructed_image, 'fro') / np.linalg.norm(data_matrix, 'fro')
+    return error
+
+def plot_error_vs_dimensions(d_values, errors):
+    plt.figure(figsize=(8, 6))
+    plt.plot(d_values, errors, marker='o')
+    plt.xlabel('Número de Dimensiones (d)')
+    plt.ylabel('Error (Norma de Frobenius)')
+    plt.title('Error de Compresión vs. Número de Dimensiones')
+    plt.grid(True)
+    plt.show()
 
 def plot_images(images, titles):
     num_images = len(images)
@@ -126,17 +141,13 @@ def plot_images(images, titles):
 def apply_compression_to_all_images(image_list, max_error):
     compressed_images = []
     for image in image_list:
-        p = image.shape[0]
-        image_vector = image.reshape(-1)
-        data_matrix = image_vector.reshape(1, -1)
-        d_values, _ = find_minimal_d_with_error(data_matrix, max_error)
-        d = d_values[-1]  # Get the last d value that meets the error criteria
-        U, S, VT = svd(image_vector.reshape(1, -1), full_matrices=False)
-        U_d = U[:, :d]
-        S_d = np.diag(S[:d])
+        d = 3  # Obtén el último valor de d que cumple con el criterio de error
+        _, _, VT = svd(image_list[13], full_matrices=False)
         VT_d = VT[:d, :]
-        reconstructed_image = np.dot(U_d, np.dot(S_d, VT_d))
-        compressed_images.append(reconstructed_image.reshape(image.shape))
+
+        reconstructed_image_vector = np.dot(image,np.transpose(VT_d))
+        reconstructed_image_vector = reconstructed_image_vector @ VT_d
+        compressed_images.append(reconstructed_image_vector)
 
     return compressed_images
 
@@ -157,7 +168,6 @@ def transform_svd_matrix(image_list, p, k):
 
 def show_original_and_reconstructed_images(image_list, p, k, num_images_to_display):
     reconstructed_images_upper, reconstructed_images_lower = transform_svd_matrix(image_list, p, k)
-
     fig, axes = plt.subplots(num_images_to_display, 3, figsize=(15, 5))
 
     for i in range(num_images_to_display):
@@ -186,27 +196,27 @@ if __name__ == "__main__":
 
     image_list, p = load_images(image_directory)
     U, S, VT, reconstructed_images_d1, reconstructed_images_d2 = perform_svd_and_reconstruction(image_list, p, d1, d2)
-    d_values = [5, 10, 15, 20, 25]
-    num_images_to_display = 15  
+    d_values = ['original',10,20]
+    num_images_to_display = 5  
     p_values = [p, p, p] 
     visualize_images([image_list, reconstructed_images_d1, reconstructed_images_d2], num_images_to_display, p_values)
-    similarities = calculate_cosine_similarity_matrices(U, S, VT, d_values)
-    euclidean_similarities = calculate_euclidean_similarity_matrices(U, S, VT, d_values)
-    create_similarity_heatmap(euclidean_similarities[-1])
+    # similarities = calculate_cosine_similarity_matrices(U, S, VT, d_values)
+    d_values = [5, 10, 15, 20, 25]
+    similarities = calculate_matrix_norm_similarity(U, S, VT, d_values,image_list)
+    for d, similarity_matrix in zip(d_values, similarities):
+        plt.figure()
+        plt.imshow(similarity_matrix, cmap='hot', interpolation='nearest')
+        plt.title(f"Heatmap for d = {d}")
+        plt.colorbar()
+        plt.show()
 
     data_matrix = np.zeros((len(image_list), image_list[0].shape[0] * image_list[0].shape[1]))
     for i, image in enumerate(image_list):
         data_matrix[i, :] = image.reshape(-1)
 
-    d_values, errors = find_minimal_d_with_error(data_matrix, max_error)
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(d_values, errors, marker='o')
-    plt.xlabel('Número de Dimensiones (d)')
-    plt.ylabel('Error (Norma de Frobenius)')
-    plt.title('Error de Compresión vs. Número de Dimensiones')
-    plt.grid(True)
-    plt.show()
+    d_valuees,errors= find_minimal_d_with_error(data_matrix, max_error)
+    
+    plot_error_vs_dimensions(d_valuees, errors)
 
     compressed_images = apply_compression_to_all_images(image_list, max_error)
     titles = [f'{i+1}' for i in range(len(compressed_images))]
@@ -216,6 +226,4 @@ if __name__ == "__main__":
     amount_images_to_display = 5
     # Supongamos que image_list y p ya están definidos
     show_original_and_reconstructed_images(image_list, p, k, amount_images_to_display)
-
-
 
