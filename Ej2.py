@@ -14,7 +14,6 @@ from sklearn.linear_model import LinearRegression
 # file_name_Y = 'y2.txt'
 # file_path_X = folder_path + file_name_X
 # file_path_Y = folder_path + file_name_Y
-
 data_X = pd.read_csv("dataset02.csv", header=0, index_col=0)
 data_Y = np.loadtxt('y2.txt')
 
@@ -91,8 +90,9 @@ for i, d in enumerate(dimensions):
 plt.show()
 
 # Regresión Lineal con PCA
-dimensions = [78]
+dimensions = [2, 4, 6, 8, 10, 15, 20, 30, 40, 50, 60, 80, 100, 102]
 errors = []
+U, S, VT = np.linalg.svd(data_X, full_matrices=False)
 
 for d in dimensions:
     VT_d = VT[:d]
@@ -121,4 +121,39 @@ axes[1].set_ylabel('Error de Predicción')
 axes[1].grid()
 
 plt.tight_layout()
+plt.show()
+
+dimensions = [2, 4, 6, 20, data_X_std.shape[1]] 
+
+similarities_reduced_pca = []
+similarities_reduced_random = []
+similarities_original = []
+
+for d in dimensions:
+    pca = PCA(n_components=d)
+    data_reduced_pca = pca.fit_transform(data_X_std)
+    similarity_pca = euclidean_distances(data_reduced_pca)
+    similarities_reduced_pca.append(similarity_pca)
+
+    random_projections = np.random.randn(data_X_std.shape[1], d)
+    data_reduced_random = np.dot(data_X_std, random_projections)
+    similarity_random = euclidean_distances(data_reduced_random)
+    similarities_reduced_random.append(similarity_random)
+
+    similarity_original = euclidean_distances(data_X_std)
+    similarities_original.append(similarity_original)
+
+plt.figure(figsize=(20, 15))
+for i, d in enumerate(dimensions):
+
+    plt.subplot(3, 5, i + 6)
+    plt.imshow(similarities_reduced_pca[i], cmap='hot', interpolation='nearest')
+    plt.title(f'PCA - d={d}')
+    plt.colorbar()
+
+    plt.subplot(3, 5, i + 11)
+    plt.imshow(similarities_reduced_random[i], cmap='hot', interpolation='nearest')
+    plt.title(f'Proyecciones azar d={d}')
+    plt.colorbar()
+
 plt.show()
