@@ -5,15 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.linear_model import LinearRegression
-# from google.colab import drive
 
-# # Montar el drive y cargar los datos
-# drive.mount('/content/drive')
-# folder_path = '/content/drive/My Drive/Colab Notebooks/'
-# file_name_X = 'dataset02.csv'
-# file_name_Y = 'y2.txt'
-# file_path_X = folder_path + file_name_X
-# file_path_Y = folder_path + file_name_Y
 data_X = pd.read_csv("dataset02.csv", header=0, index_col=0)
 data_Y = np.loadtxt('y2.txt')
 
