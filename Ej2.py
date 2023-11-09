@@ -17,11 +17,9 @@ from sklearn.linear_model import LinearRegression
 data_X = pd.read_csv("dataset02.csv", header=0, index_col=0)
 data_Y = np.loadtxt('y2.txt')
 
-# Estandarizar los datos
 scaler = StandardScaler()
 data_X_std = scaler.fit_transform(data_X)
 
-# Análisis PCA
 d_pca = data_X_std.shape[1]
 pca = PCA(n_components=d_pca)
 pca.fit(data_X_std)
@@ -29,7 +27,6 @@ singular_values = pca.singular_values_
 relative_importance = singular_values / np.sum(singular_values) * 100
 cumulative_importance = np.cumsum(relative_importance)
 
-# Gráfico de Importancia Acumulativa
 plt.figure(figsize=(8, 6))
 plt.bar(range(1, len(cumulative_importance) + 1), cumulative_importance)
 plt.title(f'Importancia Acumulativa para d={d_pca}')
@@ -41,7 +38,6 @@ plt.axhline(y=80, color='green', linestyle='--', label='80% de Importancia Acumu
 plt.legend()
 plt.show()
 
-# Matriz de Similaridad Alta Dimensión
 similarity_high_dim = euclidean_distances(data_X_std)
 plt.figure(figsize=(8, 6))
 plt.imshow(similarity_high_dim, cmap='hot')
@@ -49,7 +45,6 @@ plt.title('Matriz de Similaridad (Alta Dimensión)')
 plt.colorbar(label='Value')
 plt.show()
 
-# Reducción de Dimensionalidad con PCA (d = 2)
 pca = PCA(n_components=2)
 data_reduced_pca = pca.fit_transform(data_X_std)
 plt.scatter(data_X_std[:, 0], data_X_std[:, 1], c='orange', label='Datos Originales')
@@ -60,7 +55,6 @@ plt.ylabel('Componente Principal 2')
 plt.legend(loc='best')
 plt.show()
 
-# Reducción de Dimensionalidad con PCA (d = 2) directo desde data_std
 pca = PCA(n_components=2)
 data_std_reduced = pca.fit_transform(data_X_std)
 plt.scatter(data_reduced_pca[:, 0], data_reduced_pca[:, 1], c='blue', label='PCA (d=2) de PCA (d=106)')
@@ -72,7 +66,6 @@ plt.legend(loc='best')
 plt.tight_layout()
 plt.show()
 
-# Matrices de Similaridad en Dimensiones Reducidas con PCA
 dimensions = [78]
 similarities_reduced_pca = []
 
@@ -89,7 +82,6 @@ for i, d in enumerate(dimensions):
     plt.colorbar()
 plt.show()
 
-# Regresión Lineal con PCA
 dimensions = [2, 4, 6, 8, 10, 15, 20, 30, 40, 50, 60, 80, 100, 102]
 errors = []
 U, S, VT = np.linalg.svd(data_X, full_matrices=False)
